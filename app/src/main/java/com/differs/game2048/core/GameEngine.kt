@@ -13,6 +13,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Create a fresh board of [size]x[size] with [startTiles] random tiles. */
     fun newGame(size: Int, startTiles: Int = 2): BoardState {
+        require(size > 0) { "Board size must be positive, got: $size" }
         var board = BoardState(size = size, tiles = emptyList(), score = 0)
         repeat(startTiles) { board = addRandomTile(board) ?: board }
         return board
@@ -20,6 +21,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** Add a random tile (2 with 90% probability, else 4). Returns null if the board is full. */
     fun addRandomTile(board: BoardState): BoardState? {
+        require(board.size > 0) { "Board size must be positive" }
         val empty = emptyCells(board)
         if (empty.isEmpty()) return null
         val (row, col) = empty[random.nextInt(empty.size)]
@@ -29,6 +31,7 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     private fun emptyCells(board: BoardState): List<Pair<Int, Int>> {
+        require(board.size > 0) { "Board size must be positive" }
         val occupied = board.tiles.map { it.row to it.col }.toHashSet()
         val cells = ArrayList<Pair<Int, Int>>()
         for (r in 0 until board.size) for (c in 0 until board.size) {
@@ -43,6 +46,7 @@ class GameEngine(private val random: Random = Random.Default) {
      * NOT spawn a new tile — the caller decides when to spawn (only if moved).
      */
     fun move(board: BoardState, direction: Direction): MoveResult {
+        require(board.size > 0) { "Board size must be positive" }
         val size = board.size
         // grid[r][c] -> value, plus id tracking
         val grid = Array(size) { r -> Array<Tile?>(size) { c -> board.tileAt(r, c) } }
@@ -99,6 +103,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** The list of cell coordinates for each traversal line, ordered from head (destination) outwards. */
     private fun buildLines(size: Int, direction: Direction): List<List<Pair<Int, Int>>> {
+        require(size > 0) { "Board size must be positive" }
         val lines = ArrayList<List<Pair<Int, Int>>>()
         when (direction) {
             Direction.LEFT -> for (r in 0 until size)
@@ -115,6 +120,7 @@ class GameEngine(private val random: Random = Random.Default) {
 
     /** True if any move is still possible (empty cell or adjacent equal tiles). */
     fun movesAvailable(board: BoardState): Boolean {
+        require(board.size > 0) { "Board size must be positive" }
         if (emptyCells(board).isNotEmpty()) return true
         val size = board.size
         for (r in 0 until size) for (c in 0 until size) {
