@@ -45,6 +45,8 @@ fun GameBoard(
     onSwipe: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    require(board.size > 0) { "Board size must be positive, got: ${board.size}" }
+    
     val size = board.size
     val cellGap = 8.dp
 

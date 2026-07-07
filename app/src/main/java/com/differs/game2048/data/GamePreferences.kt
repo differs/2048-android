@@ -76,7 +76,7 @@ class GamePreferences(private val context: Context) {
             theme = p[Keys.THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             soundEnabled = p[Keys.SOUND] ?: true,
             hapticsEnabled = p[Keys.HAPTICS] ?: true,
-            boardSize = p[Keys.BOARD_SIZE] ?: 4
+            boardSize = (p[Keys.BOARD_SIZE] ?: 4).coerceIn(3..10) // Ensure valid board size
         )
     }
 
@@ -95,7 +95,9 @@ class GamePreferences(private val context: Context) {
     suspend fun setTheme(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME] = mode.name }
     suspend fun setSound(enabled: Boolean) = context.dataStore.edit { it[Keys.SOUND] = enabled }
     suspend fun setHaptics(enabled: Boolean) = context.dataStore.edit { it[Keys.HAPTICS] = enabled }
-    suspend fun setBoardSize(size: Int) = context.dataStore.edit { it[Keys.BOARD_SIZE] = size }
+    suspend fun setBoardSize(size: Int) = context.dataStore.edit { 
+        it[Keys.BOARD_SIZE] = size.coerceIn(3..10) // Ensure valid board size
+    }
 
     suspend fun updateBestScore(size: Int, score: Int) = context.dataStore.edit { p ->
         val current = p[Keys.bestScore(size)] ?: 0
@@ -107,17 +109,23 @@ class GamePreferences(private val context: Context) {
             p[Keys.GAMES_PLAYED] = (p[Keys.GAMES_PLAYED] ?: 0) + 1
             if (won) p[Keys.GAMES_WON] = (p[Keys.GAMES_WON] ?: 0) + 1
             p[Keys.HIGHEST_TILE] = maxOf(p[Keys.HIGHEST_TILE] ?: 0, highestTile)
-            p[Keys.TOTAL_MOVES] = (p[Keys.TOTAL_MOVES] ?: 0) + moves
-            p[Keys.TOTAL_SCORE] = (p[Keys.TOTAL_SCORE] ?: 0) + score
+            // Ensure moves and score are non-negative
+            p[Keys.TOTAL_MOVES] = (p[Keys.TOTAL_MOVES] ?: 0) + maxOf(0, moves)
+            p[Keys.TOTAL_SCORE] = (p[Keys.TOTAL_SCORE] ?: 0) + maxOf(0, score)
         }
 
     suspend fun saveGame(board: BoardState) = context.dataStore.edit { p ->
+        require(board.size > 0) { "Cannot save board with invalid size: ${board.size}" }
         p[Keys.savedGame(board.size)] = json.encodeToString(BoardState.serializer(), board)
     }
 
     fun savedGame(size: Int): Flow<BoardState?> = context.dataStore.data.map { p ->
-        p[Keys.savedGame(size)]?.let {
-            runCatching { json.decodeFromString(BoardState.serializer(), it) }.getOrNull()
+        p[Keys.savedGame(size)]?.let { jsonString ->
+            runCatching { 
+                val board = json.decodeFromString(BoardState.serializer(), jsonString)
+                // Validate board size after deserialization
+                if (board.size > 0) board else null
+            }.getOrNull()
         }
     }
 

@@ -55,7 +55,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             val s = prefs.settings.first()
-            boardSize = s.boardSize
+            boardSize = s.boardSize.coerceAtLeast(4) // Ensure minimum board size of 4
             val saved = prefs.savedGame(boardSize).first()
             val best = prefs.bestScore(boardSize).first()
             val board = saved ?: engine.newGame(boardSize)
@@ -113,15 +113,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun changeBoardSize(size: Int) {
         if (size == boardSize) return
-        boardSize = size
+        // Ensure board size is valid (minimum 3, maximum 10)
+        val validSize = size.coerceIn(3..10)
+        boardSize = validSize
         viewModelScope.launch {
-            prefs.setBoardSize(size)
-            val saved = prefs.savedGame(size).first()
-            val best = prefs.bestScore(size).first()
+            prefs.setBoardSize(validSize)
+            val saved = prefs.savedGame(validSize).first()
+            val best = prefs.bestScore(validSize).first()
             undoStack.clear()
             movesThisGame = 0
             statsRecorded = false
-            val board = saved ?: engine.newGame(size)
+            val board = saved ?: engine.newGame(validSize)
             _uiState.value = GameUiState(board = board, bestScore = best, canUndo = false)
         }
     }
